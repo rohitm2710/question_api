@@ -6,56 +6,55 @@ app = FastAPI()
 
 db = "question.db"
 
-@app.get("/")
-def greet():
-    return "hello"
+def init_mcq():
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mcq(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            difficulty TEXT NOT NULL,
+            question VARCHAR,
+            option_a VARCHAR,
+            option_b VARCHAR,
+            option_c VARCHAR,
+            option_d VARCHAR,
+            answer TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 @app.get("/questions")
 def get_all_questions():
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM questions")
+    cursor.execute("SELECT * FROM mcq")
 
     all_questions = cursor.fetchall()
 
     conn.close()
     return all_questions
 
-def init_db():
+@app.post("/mcq")
+def add_mcq(ques : models.mcq):
+    init_mcq()
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS questions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category TEXT NOT NULL,
-            difficulty TEXT NOT NULL,
-            question_s TEXT NOT NULL,
-            answer TEXT NOT NULL
-        )
-''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-@app.post("/questions")
-def add_question(question : models.Question):
-    conn = sqlite3.connect(db)
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        INSERT INTO questions (category, difficulty, question_s, answer)
-        VALUES (?, ?, ?, ?)
-    ''',
-    (question.category, question.difficulty, question.question_s, question.answer)
+    cursor.execute(
+        '''
+            INSERT INTO mcq (difficulty,question, option_a, option_b, option_c, option_d,answer)
+            VALUES (?,?, ?, ?, ?, ?, ?)
+        ''',
+        (ques.difficulty,ques.question, ques.option_a, ques.option_b, ques.option_c, ques.option_d, ques.answer)
     )
     conn.commit()
-    new_user_id = cursor.lastrowid
+
+    ques_num = cursor.lastrowid
 
     conn.close()
 
     return {
-        "message" : "Question saved successfully",
-        "id" : new_user_id,
+        "message" : "Question succesfully added",
+        "number" : ques_num
     }
